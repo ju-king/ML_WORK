@@ -9,6 +9,10 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.model_selection import StratifiedKFold
 import lightgbm as lgb
+from gensim.models import Word2Vec
+import logging
+
+logging.getLogger().setLevel(logging.INFO)
 
 
 def read_csv():
@@ -43,6 +47,26 @@ def get_feature(data):
     pca = PCA(n_components=128)
     tf_idf_pca = pca.fit_transform(tf_idf.toarray())
     return tf_idf_pca
+
+def w2v(data):
+    model = Word2Vec(data, window=5, min_count=1, workers=10, epochs=50, vector_size=128)
+    sentence_vectors = []
+    for words in data:
+        M = []
+        for word in words:
+            try:
+                M.append(model.wv[word])
+            except:
+                continue
+
+        M = np.array(M)
+        v = M.sum(axis=0)
+        sentence_vectors.append(v/len(words))
+    # print(sentence_vectors)
+    return sentence_vectors
+
+
+
 
 
 def train(data):
@@ -79,23 +103,36 @@ def train(data):
                         train,
                         valid_sets=[train, val],
                         num_boost_round=5000,
-                        verbose_eval=100,
+                        verbose_eval=200,
                         early_stopping_rounds=100)
         oof[val_idx] = clf.predict(data.loc[val_idx, feats], num_iteration=clf.best_iteration)
     print('AUC... ', roc_auc_score(data['label'], oof, multi_class='ovr'))
 
 
 if __name__ == '__main__':
+    logging.info('======读取数据======')
     data = read_csv()
+    logging.info('======标签编码======')
     label = label_encoder(data['标签'])
-    tf_idf_pca = get_feature(cut_word(data['题目']))
-
+    logging.info('======分词======')
+    sentences = cut_word(data['题目'])
+    logging.info('======TFIDF======')
+    tf_idf_pca = get_feature(sentences)
+    logging.info('======W2V======')
+    sentence_vectors=w2v(sentences)
+    logging.info('======特征与标签加载======')
     clos = []
     for i in range(128):
         clos.append('_pca_' + str(i))
-    print(clos)
+
+    clos1 = []
+    for i in range(128):
+        clos1.append('_embed_' + str(i))
 
     df_data = pd.DataFrame(tf_idf_pca, columns=clos)
     df_data['label'] = label
-    df_data.to_csv('output/feature_pca128.csv', index=None)
-    train(df_data)
+    df_data1 = pd.DataFrame(sentence_vectors, columns=clos1)
+    data_all = pd.concat([df_data, df_data1], axis=1)
+    data_all.to_csv('output/feature_pca128+embed128.csv', index=None)
+    logging.info('======开始训练======')
+    train(data_all)
