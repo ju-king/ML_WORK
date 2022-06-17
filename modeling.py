@@ -26,6 +26,7 @@ def cut_word(data):
     for i in tqdm(data):
         text = seg.cut(i)
         sentence.append(' '.join(text))
+        # print(sentence)
     return sentence
 
 
@@ -49,23 +50,22 @@ def get_feature(data):
     return tf_idf_pca
 
 def w2v(data):
-    model = Word2Vec(data, window=5, min_count=1, workers=10, epochs=50, vector_size=128)
+    sentences_list=[]
+    for i in data:
+        sentences_list.append(i.split(' '))
+    print(sentences_list)
+    model = Word2Vec(sentences_list, window=5, min_count=1, workers=10, epochs=50, vector_size=128)
     model.save('output/word2vec2.model')
     sentence_vectors = []
     for words in data:
-        print(type(words))
         M = []
-        for word in words:
-            print(word)
-            try:
-                M.append(model.wv[word])
-            except:
-                continue
-
+        wordlist=words.split(' ')
+        for word in wordlist:
+            M.append(model.wv[word])
         M = np.array(M)
         v = M.sum(axis=0)
-        sentence_vectors.append(v/len(words))
-    # print(sentence_vectors)
+        sentence_vectors.append(v/len(wordlist))
+
     return sentence_vectors
 
 
@@ -134,7 +134,7 @@ if __name__ == '__main__':
 
     df_data = pd.DataFrame(tf_idf_pca, columns=clos)
     df_data['label'] = label
-    df_data1 = pd.DataFrame(sentence_vectors, columns=clos1)
+    df_data1 = pd.DataFrame(sentence_vectors,columns=clos1)
     data_all = pd.concat([df_data, df_data1], axis=1)
     data_all.to_csv('output/feature_pca128+embed128.csv', index=None)
     logging.info('======开始训练======')
