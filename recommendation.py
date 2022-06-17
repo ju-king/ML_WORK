@@ -14,12 +14,16 @@ inputs = input()
 sentences = modeling.cut_word([inputs])
 
 M=[]
+length=0
 for words in sentences:
-    for word in  words:
+    word_set=words.split(' ')
+    length=len(word_set)
+    print(len)
+    for word in word_set:
         M.append(model.wv[word])
 M = np.array(M)
 v = M.sum(axis=0)
-sentence_vectors=(v/len(sentences))
+sentence_vectors=(v/length)
 
 con_sim=[]
 for i in range(len(data_vec)):
