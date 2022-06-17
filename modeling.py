@@ -53,7 +53,7 @@ def w2v(data):
     sentences_list=[]
     for i in data:
         sentences_list.append(i.split(' '))
-    print(sentences_list)
+    # print(sentences_list)
     model = Word2Vec(sentences_list, window=5, min_count=1, workers=10, epochs=50, vector_size=128)
     model.save('output/word2vec2.model')
     sentence_vectors = []
